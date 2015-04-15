@@ -95,7 +95,7 @@ char *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices) {
           }
 
           peso = agget(a, "peso");
-          matriz[cauda_indice * n_vertices + cabeca_indice] = (peso != NULL && *peso != '\0') : atof(peso) : 1.0;
+          matriz[cauda_indice * n_vertices + cabeca_indice] = (peso != NULL && *peso != '\0') ? atof(peso) : 1.0;
         }
       }
     }
