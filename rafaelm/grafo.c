@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <limits.h>
+#include <cgraph.h>
 #include "grafo.h"
 
 //------------------------------------------------------------------------------
@@ -38,7 +40,7 @@ int encontra_vertice(vertice vertices, unsigned int n_vertices, const char *nome
 //------------------------------------------------------------------------------
 vertice obter_vertices(Agraph_t *grafo, unsigned int *n_vertices) {
   Agnode_t *v;
-  vertice *vertices = NULL;
+  vertice vertices = NULL;
   int i;
 
   /* Número de vértices do grafo */
@@ -62,35 +64,35 @@ vertice obter_vertices(Agraph_t *grafo, unsigned int *n_vertices) {
 }
 
 //------------------------------------------------------------------------------
-char *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices) {
+double *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices) {
   Agedge_t *a;
   Agnode_t *v;
-  double *matriz;
+  double *matriz = NULL;
   char *peso;
-  unsigned int cauda_indice, cabeca_indice;
+  unsigned int cauda_indice, cabeca_indice, i;
   int n_vertices;
 
   /* Número de vértices do grafo */
   n_vertices = agnnodes(g);
 
-  if(n_arestas > 0) {
+  if(n_vertices > 0) {
     /* Aloca a quantidade de memória necessária para armazenar todas as arestas */
     matriz = (double *) malloc(sizeof(double) * n_vertices * n_vertices);
 
-    if(arestas != NULL) {
+    if(matriz != NULL) {
       /* Inicializa a matriz */
       for(i = 0; i < n_vertices * n_vertices; ++i) {
         matriz[i] = 0.0;
       }
 
       /* Percorre todas as arestas do grafo */
-      for(v = agfstnode(grafo); v != NULL; v = agnxtnode(grafo, v)) {
-        for(a = agfstedge(grafo, v); a != NULL; a = agnxtedge(grafo, a, v)) {
+      for(v = agfstnode(g); v != NULL; v = agnxtnode(g, v)) {
+        for(a = agfstedge(g, v); a != NULL; a = agnxtedge(g, a, v)) {
           cauda_indice = encontra_vertice(lista_vertices, n_vertices, agnameof(agtail(a)));
           cabeca_indice = encontra_vertice(lista_vertices, n_vertices, agnameof(aghead(a)));
 
           if(cauda_indice == -1 || cabeca_indice == -1) {
-            free(matriz)
+            free(matriz);
             return NULL;
           }
 
