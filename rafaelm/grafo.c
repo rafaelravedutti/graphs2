@@ -178,8 +178,43 @@ int destroi_grafo(grafo g) {
 }
 //------------------------------------------------------------------------------
 grafo escreve_grafo(FILE *output, grafo g) {
+  struct vertice *v;
+  char caractere_aresta;
+  double peso;
+  unsigned int n_vertices, i, j;
 
-  return output ? g : NULL;
+  /* Número de vértices do grafo */
+  n_vertices = g->grafo_n_vertices;
+
+  /* Imprime na saida a definição do grafo, caso seja um grafo direcionado,
+     é adicionado o prefixo "di" */
+  fprintf(output, "strict %sgraph \"%s\" {\n\n", (g->grafo_direcionado) ? "di" : "", g->grafo_nome);
+
+  /* Imprime os nomes dos vértices */
+  for(i = 0; i < n_vertices; ++i) {
+    fprintf(output, "    \"%s\"\n", g->grafo_vertices[i].vertice_nome);
+  }
+
+  fprintf(output, "\n");
+
+  /* Se o grafo é direcionado, representamos as arestas por v -> u,
+     sendo v o vértice de origem e u o vértice de destino de cada aresta.
+     Caso contrário, representamos as arestas por v -- u */
+  caractere_aresta = (g->grafo_direcionado) ? '>' : '-';
+
+  for(i = 0; i < n_vertices; ++i) {
+    for(j = 0; j < n_vertices; ++j) {
+      peso = g->grafo_matriz[i * n_vertices + j];
+
+      /* Se o peso for diferente de 0.0 (padrão), então ele é imprimido como um atributo */
+      if(peso > 0.000000001 || peso < -0.000000001) {
+        fprintf(output, "    \"%s\" -%c \"%s\" [peso=%.8f]\n", g->grafo_vertices[i].vertice_nome, caractere_aresta, g->grafo_vertices[j].vertice_nome, peso);
+      }
+    }
+  }
+
+  fprintf(output, "}\n");
+  return g;
 }
 //------------------------------------------------------------------------------
 char *nome(grafo g) {
