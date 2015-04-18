@@ -8,8 +8,9 @@
 //------------------------------------------------------------------------------
 typedef struct grafo {
   int grafo_direcionado;
+  int grafo_ponderado;
   char *grafo_nome;
-  double *grafo_matriz;
+  long int *grafo_matriz;
   vertice grafo_vertices;
   unsigned int grafo_n_vertices;
 } *grafo;
@@ -64,10 +65,10 @@ vertice obter_vertices(Agraph_t *grafo, unsigned int *n_vertices) {
 }
 
 //------------------------------------------------------------------------------
-double *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices) {
+long int *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices, int grafo_ponderado) {
   Agedge_t *a;
   Agnode_t *v;
-  double *matriz = NULL;
+  long int *matriz = NULL;
   char *peso;
   unsigned int cauda_indice, cabeca_indice, i;
   int n_vertices;
@@ -77,27 +78,35 @@ double *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices) {
 
   if(n_vertices > 0) {
     /* Aloca a quantidade de memória necessária para armazenar todas as arestas */
-    matriz = (double *) malloc(sizeof(double) * n_vertices * n_vertices);
+    matriz = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
 
     if(matriz != NULL) {
       /* Inicializa a matriz */
       for(i = 0; i < n_vertices * n_vertices; ++i) {
-        matriz[i] = 0.0;
+        matriz[i] = 0;
       }
 
       /* Percorre todas as arestas do grafo */
       for(v = agfstnode(g); v != NULL; v = agnxtnode(g, v)) {
         for(a = agfstedge(g, v); a != NULL; a = agnxtedge(g, a, v)) {
+          /* Obtêm os vértices de origem e destino da aresta */
           cauda_indice = encontra_vertice(lista_vertices, n_vertices, agnameof(agtail(a)));
           cabeca_indice = encontra_vertice(lista_vertices, n_vertices, agnameof(aghead(a)));
 
+          /* Caso não sejam encontrados, retorna com um erro */
           if(cauda_indice == -1 || cabeca_indice == -1) {
             free(matriz);
             return NULL;
           }
 
-          peso = agget(a, "peso");
-          matriz[cauda_indice * n_vertices + cabeca_indice] = (peso != NULL && *peso != '\0') ? atof(peso) : 1.0;
+          /* Se o grafo é ponderado, armazena o valor do peso (se existir) na matriz,
+             caso contrário armazena o valor 1 */
+          if(grafo_ponderado == 1) {
+            peso = agget(a, "peso");
+            matriz[cauda_indice * n_vertices + cabeca_indice] = (peso != NULL && *peso != '\0') ? atoi(peso) : 0;
+          } else {
+            matriz[cauda_indice * n_vertices + cabeca_indice] = 1;
+          }
         }
       }
     }
@@ -127,8 +136,15 @@ grafo le_grafo(FILE *input) {
       return NULL;
     }
 
+    /* Verifica se g é um grafo ponderado ou não */
+    if(agattr(g, AGEDGE, "peso", (char *) NULL) != NULL) {
+      grafo_lido->grafo_ponderado = 1;
+    } else {
+      grafo_lido->grafo_ponderado = 0;
+    }
+
     /* Carrega na estrutura a matriz de adjacência de g */
-    if((grafo_lido->grafo_matriz = obter_matriz_adjacencia(g, grafo_lido->grafo_vertices)) == NULL) {
+    if((grafo_lido->grafo_matriz = obter_matriz_adjacencia(g, grafo_lido->grafo_vertices, grafo_lido->grafo_ponderado)) == NULL) {
       agclose(g);
       destroi_grafo(grafo_lido);
       return NULL;
@@ -180,7 +196,7 @@ int destroi_grafo(grafo g) {
 grafo escreve_grafo(FILE *output, grafo g) {
   struct vertice *v;
   char caractere_aresta;
-  double peso;
+  long int valor_matriz;
   unsigned int n_vertices, i, j;
 
   /* Número de vértices do grafo */
@@ -202,13 +218,22 @@ grafo escreve_grafo(FILE *output, grafo g) {
      Caso contrário, representamos as arestas por v -- u */
   caractere_aresta = (g->grafo_direcionado) ? '>' : '-';
 
+  /* Percorre toda a matriz de adjacência do grafo */
   for(i = 0; i < n_vertices; ++i) {
     for(j = 0; j < n_vertices; ++j) {
-      peso = g->grafo_matriz[i * n_vertices + j];
+      /* Obtêm o valor de M[i,j], sendo M a matriz de adjacência do grafo */
+      valor_matriz = g->grafo_matriz[i * n_vertices + j];
 
-      /* Se o peso for diferente de 0.0 (padrão), então ele é imprimido como um atributo */
-      if(peso > 0.000000001 || peso < -0.000000001) {
-        fprintf(output, "    \"%s\" -%c \"%s\" [peso=%.8f]\n", g->grafo_vertices[i].vertice_nome, caractere_aresta, g->grafo_vertices[j].vertice_nome, peso);
+      /* Se o valor for diferente de 0 (padrão), então imprime a aresta */
+      if(valor_matriz != 0) {
+        fprintf(output, "    \"%s\" -%c \"%s\"", g->grafo_vertices[i].vertice_nome, caractere_aresta, g->grafo_vertices[j].vertice_nome);
+
+        /* Se g é um grafo ponderado, imprime o peso da aresta */
+        if(g->grafo_ponderado == 1) {
+          fprintf(output, " [peso=%d]", valor_matriz);
+        }
+
+        fprintf(output, "\n");
       }
     }
   }
