@@ -114,7 +114,72 @@ long int *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices, int grafo
 
   return matriz;
 }
+//------------------------------------------------------------------------------
+void multiplicar_matriz_quadrada(long int **matriz, long int *mult, unsigned int tamanho) {
+  long int *matriz_resultado, *aux = *matriz;
+  unsigned int i, j, k;
 
+  matriz_resultado = (long int *) malloc(sizeof(long int) * tamanho * tamanho);
+
+  if(matriz_resultado != NULL) {
+    for(i = 0; i < tamanho; ++i) {
+      for(j = 0; j < tamanho; ++j) {
+        matriz_resultado[i * tamanho + j] = 0;
+
+        for(k = 0; k < tamanho; ++k) {
+          matriz_resultado[i * tamanho + j] += (*matriz)[i * tamanho + k] * mult[k * tamanho + j];
+        }
+      }
+    }
+
+    *matriz = matriz_resultado;
+    free(aux);
+  }
+}
+//------------------------------------------------------------------------------
+void somar_matriz_quadrada(long int *matriz, long int *soma, unsigned int tamanho) {
+  unsigned int i;
+
+  for(i = 0; i < tamanho * tamanho; ++i) {
+    matriz[i] += soma[i];
+  }
+}
+//------------------------------------------------------------------------------
+long int _obter_distancia(grafo g, unsigned int i, unsigned int j, long int tentativa) {
+  long int *matriz, min, distancia;
+  unsigned int n_vertices, a;
+
+  matriz = g->grafo_matriz;
+  n_vertices = g->grafo_n_vertices;
+
+  if(tentativa >= n_vertices - 1) {
+    return infinito;
+  }
+
+  if(matriz[i * n_vertices + j] != 0) {
+    return matriz[i * n_vertices + j];
+  }
+
+  for(a = 0; a < n_vertices && a != i; ++a) {
+    if(matriz[i * n_vertices + a] != 0) {
+      distancia = _obter_distancia(g, a, j, tentativa + 1);
+
+      if(distancia != infinito && min > matriz[i * n_vertices + a] + distancia) {
+        min = matriz[i * n_vertices + a] + distancia;
+      }
+    }
+  }
+
+  return min;
+}
+//------------------------------------------------------------------------------
+long int obter_distancia(grafo g, unsigned int i, unsigned int j) {
+  if(i == j) {
+    return 0;
+  }
+
+  return _obter_distancia(g, i, j, 0);
+}
 //------------------------------------------------------------------------------
 grafo le_grafo(FILE *input) {
   Agraph_t *g;
@@ -243,38 +308,126 @@ grafo escreve_grafo(FILE *output, grafo g) {
 }
 //------------------------------------------------------------------------------
 char *nome(grafo g) {
-
   return g ? g->grafo_nome : "";
 }
 //------------------------------------------------------------------------------
 unsigned int n_vertices(grafo g) {
-
   return g ? g->grafo_n_vertices : 0;
 }
 
 //------------------------------------------------------------------------------
 int direcionado(grafo g) {
-
   return g ? g->grafo_direcionado : 0;
 }
+
 //------------------------------------------------------------------------------
 int conexo(grafo g) {
+  long int *matriz_potencia, *matriz_soma;
+  unsigned int n_vertices, i, j;
 
-  return g ? 0 : 0;
+  n_vertices = g->grafo_n_vertices;
+  matriz_potencia = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
+
+  if(matriz_potencia == NULL) {
+    fprintf(stderr, "conexo(): Erro ao alocar memória para matriz exponencial!\n");
+    return -1;
+  }
+
+  matriz_soma = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
+
+  if(matriz_soma == NULL) {
+    free(matriz_potencia);
+    fprintf(stderr, "conexo(): Erro ao alocar memória para matriz acumulativa!\n");
+    return -1;
+  }
+
+  for(i = 0; i < n_vertices * n_vertices; ++i) {
+    matriz_potencia[i] = g->grafo_matriz[i];
+    matriz_soma[i] = g->grafo_matriz[i];
+  }
+
+  for(i = 0; i < n_vertices; ++i) {
+    multiplicar_matriz_quadrada(&matriz_potencia, g->grafo_matriz, n_vertices);
+    somar_matriz_quadrada(matriz_soma, matriz_potencia, n_vertices);
+  }
+
+  for(i = 0; i < n_vertices; ++i) {
+    for(j = 0; j < n_vertices; ++j) {
+      if(matriz_soma[i * n_vertices + j] == 0) {
+        return 0;
+      }
+    }
+  }
+
+  return 1;
 }
 //------------------------------------------------------------------------------
 int fortemente_conexo(grafo g)  {
+  unsigned int n_vertices, i, j;
 
-  return g ? 0 : 0;
+  n_vertices = g->grafo_n_vertices;
+
+  for(i = 0; i < n_vertices; ++i) {
+    for(j = 0; j < n_vertices; ++j) {
+      if(g->grafo_matriz[i * n_vertices + j] == 0) {
+        return 0;
+      }
+    }
+  }
+
+  return 1;
 }
 //------------------------------------------------------------------------------
 long int diametro(grafo g) {
+  long int max = 0, distancia;
+  unsigned int n_vertices, i, j;
 
-  return g ? 0 : infinito;
+  n_vertices = g->grafo_n_vertices;
+
+  for(i = 0; i < n_vertices; ++i) {
+    for(j = 0; j < n_vertices; ++j) {
+      distancia = obter_distancia(g, i, j);
+
+      if(max < distancia) {
+        max = distancia;
+      }
+    }
+  }
+
+  return max;
 }
 //------------------------------------------------------------------------------
-
 grafo distancias(grafo g) {
+  grafo grafo_distancias;
+  unsigned int n_vertices, i, j;
 
-  return g;
+  grafo_distancias = (grafo) malloc(sizeof(struct grafo));
+  n_vertices = g->grafo_n_vertices;
+
+  if(grafo_distancias != NULL) {
+    grafo_distancias->grafo_direcionado = g->grafo_direcionado;
+    grafo_distancias->grafo_ponderado = g->grafo_ponderado;
+    grafo_distancias->grafo_nome = strdup(g->grafo_nome);
+    grafo_distancias->grafo_n_vertices = n_vertices;
+
+    grafo_distancias->grafo_vertices = (vertice) malloc(sizeof(struct vertice) * n_vertices);
+
+    if(grafo_distancias->grafo_vertices != NULL) {
+      for(i = 0; i < n_vertices; ++i) {
+        grafo_distancias->grafo_vertices[i].vertice_nome = strdup(g->grafo_vertices[i].vertice_nome);
+      }
+    }
+
+    grafo_distancias->grafo_matriz = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
+
+    if(grafo_distancias->grafo_matriz != NULL) {
+      for(i = 0; i < n_vertices; ++i) {
+        for(j = 0; j < n_vertices; ++j) {
+          grafo_distancias->grafo_matriz[i * n_vertices + j] = obter_distancia(g, i, j);
+        }
+      }
+    }
+  }
+
+  return grafo_distancias;
 }
