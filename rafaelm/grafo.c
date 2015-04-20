@@ -149,21 +149,33 @@ long int _obter_distancia(grafo g, unsigned int i, unsigned int j, long int tent
   long int *matriz, min, distancia;
   unsigned int n_vertices, a;
 
+  /* Matriz de adjacência do grafo */
   matriz = g->grafo_matriz;
+  /* Número de vértices do grafo */
   n_vertices = g->grafo_n_vertices;
 
+  /* Se já tentou encontrar um passeio até j com n - 1 tentativas,
+     sendo n o número de vértices do grafo, portanto não há passeio
+     até j, logo retorna infinito */
   if(tentativa >= n_vertices - 1) {
     return infinito;
   }
 
+  /* Se M[i,j] não é nulo, então M[i,j] é a distância entre i e j */
   if(matriz[i * n_vertices + j] != 0) {
     return matriz[i * n_vertices + j];
   }
 
+  /* Percorre todos os vértices do grafo */
   for(a = 0; a < n_vertices && a != i; ++a) {
+    /* Se a é um vértice adjacente a i, então busca a distância entre
+       a e j, e assim, recursivamente, até encontrar um vértice adjacente
+       a j e, posteriormente, retornar o menor valor encontrado */
     if(matriz[i * n_vertices + a] != 0) {
       distancia = _obter_distancia(g, a, j, tentativa + 1);
 
+      /* É necessário somar a distância de i à a na distância de a à j, para
+         assim obter a distância de i à j */
       if(distancia != infinito && min > matriz[i * n_vertices + a] + distancia) {
         min = matriz[i * n_vertices + a] + distancia;
       }
@@ -174,10 +186,12 @@ long int _obter_distancia(grafo g, unsigned int i, unsigned int j, long int tent
 }
 //------------------------------------------------------------------------------
 long int obter_distancia(grafo g, unsigned int i, unsigned int j) {
+  /* Se i e j são iguais (mesmos vértices), então retorna 0 */
   if(i == j) {
     return 0;
   }
 
+  /* Verifica distâncias na primeira tentativa (0) */
   return _obter_distancia(g, i, j, 0);
 }
 //------------------------------------------------------------------------------
@@ -325,32 +339,43 @@ int conexo(grafo g) {
   long int *matriz_potencia, *matriz_soma;
   unsigned int n_vertices, i, j;
 
+  /* Número de vértices do grafo */
   n_vertices = g->grafo_n_vertices;
+  /* Matriz de potência (exponencial), irá armazenar M^1, M^2, M^3, ... M^(n_vertices-1) */
   matriz_potencia = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
 
+  /* Se for nula, retorna erro de alocação dinâmica */
   if(matriz_potencia == NULL) {
     fprintf(stderr, "conexo(): Erro ao alocar memória para matriz exponencial!\n");
     return -1;
   }
 
+  /* Matriz de soma (acumulativa), irá armazenar M^1 + M^2 + M^3 + ... M^(n_vertices-1) */
   matriz_soma = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
 
+  /* Se for nula, retorna erro de alocação dinâmica */
   if(matriz_soma == NULL) {
     free(matriz_potencia);
     fprintf(stderr, "conexo(): Erro ao alocar memória para matriz acumulativa!\n");
     return -1;
   }
 
+  /* Inicializa matriz_potencia <- M^1 e matriz_soma <- M, sendo M a matriz de adjacência do grafo */
   for(i = 0; i < n_vertices * n_vertices; ++i) {
     matriz_potencia[i] = g->grafo_matriz[i];
     matriz_soma[i] = g->grafo_matriz[i];
   }
 
+  /* Multiplica a matriz_potencia por M aumentando seu grau, ou seja, se matriz_potencia = M^x, então
+     matriz_potencia <- M^(x+1), e soma M^(x+1) à matriz_soma */
   for(i = 0; i < n_vertices; ++i) {
     multiplicar_matriz_quadrada(&matriz_potencia, g->grafo_matriz, n_vertices);
     somar_matriz_quadrada(matriz_soma, matriz_potencia, n_vertices);
   }
 
+  /* Como M^n possui valores definidos em i,j onde existe passeio de tamanho n entre os vértices i e j,
+     então M^1 + M^2 + ... + M^(n_vertices-1) = matriz_soma possui valores definidos entre vértices onde
+     existe passeio entre os mesmos. Logo se há um valor nulo, o grafo não é conexo */
   for(i = 0; i < n_vertices; ++i) {
     for(j = 0; j < n_vertices; ++j) {
       if(matriz_soma[i * n_vertices + j] == 0) {
@@ -365,10 +390,13 @@ int conexo(grafo g) {
 int fortemente_conexo(grafo g)  {
   unsigned int n_vertices, i, j;
 
+  /* Número de vértices do grafo */
   n_vertices = g->grafo_n_vertices;
 
+  /* Percorre todos os valores da matriz de adjacência do grafo */
   for(i = 0; i < n_vertices; ++i) {
     for(j = 0; j < n_vertices; ++j) {
+      /* Se há um valor nulo, então o grafo não é fortemente conexo */
       if(g->grafo_matriz[i * n_vertices + j] == 0) {
         return 0;
       }
@@ -382,12 +410,16 @@ long int diametro(grafo g) {
   long int max = 0, distancia;
   unsigned int n_vertices, i, j;
 
+  /* Número de vértices do grafo */
   n_vertices = g->grafo_n_vertices;
 
+  /* Percorre todos os valores da matriz de adjacência do grafo */
   for(i = 0; i < n_vertices; ++i) {
     for(j = 0; j < n_vertices; ++j) {
+      /* Obtêm a distância entre os vértices */
       distancia = obter_distancia(g, i, j);
 
+      /* Se a distância é maior que o valor máximo, então atribui ela ao valor máximo */
       if(max < distancia) {
         max = distancia;
       }
@@ -401,25 +433,32 @@ grafo distancias(grafo g) {
   grafo grafo_distancias;
   unsigned int n_vertices, i, j;
 
+  /* Estrutura do grafo de distâncias */
   grafo_distancias = (grafo) malloc(sizeof(struct grafo));
+  /* Número de vértices do grafo */
   n_vertices = g->grafo_n_vertices;
 
   if(grafo_distancias != NULL) {
+    /* Inicializa grafo de distâncias */
     grafo_distancias->grafo_direcionado = g->grafo_direcionado;
     grafo_distancias->grafo_ponderado = g->grafo_ponderado;
     grafo_distancias->grafo_nome = strdup(g->grafo_nome);
     grafo_distancias->grafo_n_vertices = n_vertices;
 
+    /* Aloca vértices do grafo de distâncias */
     grafo_distancias->grafo_vertices = (vertice) malloc(sizeof(struct vertice) * n_vertices);
 
+    /* Copia vértices do grafo de distâncias */
     if(grafo_distancias->grafo_vertices != NULL) {
       for(i = 0; i < n_vertices; ++i) {
         grafo_distancias->grafo_vertices[i].vertice_nome = strdup(g->grafo_vertices[i].vertice_nome);
       }
     }
 
+    /* Aloca matriz de adjacência do grafo de distâncias */
     grafo_distancias->grafo_matriz = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
 
+    /* Define as distâncias na matriz de adjacência do grafo */
     if(grafo_distancias->grafo_matriz != NULL) {
       for(i = 0; i < n_vertices; ++i) {
         for(j = 0; j < n_vertices; ++j) {
