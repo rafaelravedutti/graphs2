@@ -2,8 +2,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <cgraph.h>
+#include <graphviz/cgraph.h>
 #include "grafo.h"
+
+// Protótipos de funções
+int encontra_vertice(vertice , unsigned int , const char *);
+vertice obter_vertices(Agraph_t *, unsigned int *);
+long int *obter_matriz_adjacencia(Agraph_t *, vertice , int, unsigned int );
+void multiplicar_matriz_quadrada(long int **, long int *, unsigned int );
+void somar_matriz_quadrada(long int *, long int *, unsigned int );
+long int _obter_distancia(grafo , unsigned int , unsigned int , long int );
+long int obter_distancia(grafo , unsigned int , unsigned int );
+//grafo le_grafo(FILE *);
+//int destroi_grafo(grafo );
+//grafo escreve_grafo(FILE *output, grafo );
+//char *nome(grafo );
+//unsigned int n_vertices(grafo );
+//int direcionado(grafo );
+//int conexo(grafo );
+//int fortemente_conexo(grafo ); 
+//long int diametro(grafo );
+//grafo distancias(grafo );
 
 //------------------------------------------------------------------------------
 typedef struct grafo {
@@ -31,7 +50,7 @@ int encontra_vertice(vertice vertices, unsigned int n_vertices, const char *nome
   for(i = 0; i < n_vertices; ++i) {
     /* Se o nome do vértice é igual ao desejado, então o retorna */
     if(strcmp(vertices[i].vertice_nome, nome) == 0) {
-      return i;
+      return (int)i;
     }
   }
 
@@ -39,13 +58,13 @@ int encontra_vertice(vertice vertices, unsigned int n_vertices, const char *nome
 }
 
 //------------------------------------------------------------------------------
-vertice obter_vertices(Agraph_t *grafo, unsigned int *n_vertices) {
+vertice obter_vertices(Agraph_t *g, unsigned int *n_vertices) {
   Agnode_t *v;
   vertice vertices = NULL;
-  int i;
+  unsigned int i;
 
   /* Número de vértices do grafo */
-  *n_vertices = agnnodes(grafo);
+  *n_vertices = (unsigned int) agnnodes(g);
 
   if(*n_vertices > 0) {
     /* Aloca a quantidade de memória necessária para armazenar todos os vértices */
@@ -53,7 +72,7 @@ vertice obter_vertices(Agraph_t *grafo, unsigned int *n_vertices) {
 
     if(vertices != NULL) {
       /* Percorre todos os vértices do grafo */
-      for(i = 0, v = agfstnode(grafo); i < *n_vertices; ++i, v = agnxtnode(grafo, v)) {
+      for(i = 0, v = agfstnode(g); i < *n_vertices; ++i, v = agnxtnode(g, v)) {
         /* Duplica na memória o nome do vértice e o atribui na estrutura.
            A duplicação é feita para evitar erros (por exemplo, se o espaço for desalocado) */
         vertices[i].vertice_nome = strdup(agnameof(v));
@@ -65,23 +84,27 @@ vertice obter_vertices(Agraph_t *grafo, unsigned int *n_vertices) {
 }
 
 //------------------------------------------------------------------------------
-long int *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices, int grafo_ponderado) {
+long int *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices, int grafo_ponderado, unsigned int n_vertices) {
   Agedge_t *a;
   Agnode_t *v;
   long int *matriz = NULL;
   char *peso;
-  unsigned int cauda_indice, cabeca_indice, i;
-  int n_vertices;
+  unsigned i;
+  int cauda_indice, cabeca_indice;
+  //int n_vertices;
 
   /* Número de vértices do grafo */
-  n_vertices = agnnodes(g);
+  // No lugar de executar agnnodes de novo, podemos receber n_vertices como parâmetro (from g->grafo_n_vertices)
+  //n_vertices = agnnodes(g);
 
   if(n_vertices > 0) {
     /* Aloca a quantidade de memória necessária para armazenar todas as arestas */
+    // Para melhorar performance, podemos fazer uma matriz simétrica (tamanho (n(n-1))/2) se o grafo nao for direcionado
     matriz = (long int *) malloc(sizeof(long int) * n_vertices * n_vertices);
 
     if(matriz != NULL) {
       /* Inicializa a matriz */
+      // Por que não usar calloc no lugar do malloc anterior?
       for(i = 0; i < n_vertices * n_vertices; ++i) {
         matriz[i] = 0;
       }
@@ -89,7 +112,12 @@ long int *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices, int grafo
       /* Percorre todas as arestas do grafo */
       for(v = agfstnode(g); v != NULL; v = agnxtnode(g, v)) {
         for(a = agfstedge(g, v); a != NULL; a = agnxtedge(g, a, v)) {
+          /*Bem, dessa forma, a gente vai ler uma aresta 2 vezes 
+          u->v e v->u caso o grafo não seja direcionado
+          talvez resolver com busca de aresta/arco antes de adicionar à matriz*/
+
           /* Obtêm os vértices de origem e destino da aresta */
+          // Podemos chamar de {u_indice,v_indice} (bem opcional)
           cauda_indice = encontra_vertice(lista_vertices, n_vertices, agnameof(agtail(a)));
           cabeca_indice = encontra_vertice(lista_vertices, n_vertices, agnameof(aghead(a)));
 
@@ -103,9 +131,9 @@ long int *obter_matriz_adjacencia(Agraph_t *g, vertice lista_vertices, int grafo
              caso contrário armazena o valor 1 */
           if(grafo_ponderado == 1) {
             peso = agget(a, "peso");
-            matriz[cauda_indice * n_vertices + cabeca_indice] = (peso != NULL && *peso != '\0') ? atoi(peso) : 0;
+            matriz[cauda_indice * (int)n_vertices + cabeca_indice] = (peso != NULL && *peso != '\0') ? atol(peso) : 0;
           } else {
-            matriz[cauda_indice * n_vertices + cabeca_indice] = 1;
+            matriz[cauda_indice * (int)n_vertices + cabeca_indice] = 1;
           }
         }
       }
@@ -223,7 +251,7 @@ grafo le_grafo(FILE *input) {
     }
 
     /* Carrega na estrutura a matriz de adjacência de g */
-    if((grafo_lido->grafo_matriz = obter_matriz_adjacencia(g, grafo_lido->grafo_vertices, grafo_lido->grafo_ponderado)) == NULL) {
+    if((grafo_lido->grafo_matriz = obter_matriz_adjacencia(g, grafo_lido->grafo_vertices, grafo_lido->grafo_ponderado, grafo_lido->grafo_n_vertices)) == NULL) {
       agclose(g);
       destroi_grafo(grafo_lido);
       return NULL;
@@ -273,7 +301,7 @@ int destroi_grafo(grafo g) {
 }
 //------------------------------------------------------------------------------
 grafo escreve_grafo(FILE *output, grafo g) {
-  struct vertice *v;
+  //struct vertice *v;
   char caractere_aresta;
   long int valor_matriz;
   unsigned int n_vertices, i, j;
@@ -309,7 +337,7 @@ grafo escreve_grafo(FILE *output, grafo g) {
 
         /* Se g é um grafo ponderado, imprime o peso da aresta */
         if(g->grafo_ponderado == 1) {
-          fprintf(output, " [peso=%d]", valor_matriz);
+          fprintf(output, " [peso=%ld]", valor_matriz);
         }
 
         fprintf(output, "\n");
