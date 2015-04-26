@@ -23,3 +23,7 @@ passeio de tamanho 1 entre os vértices). Então obtemos M^2, e atribuimos como 
 distâncias apenas se o valor for infinito (i.e. ainda não foi encontrado passeio
 entre os vértices, então a distância deles é 2). E assim sucessivamente, até chegarmos
 à M^(n-1), onde n é o número de vértices do grafo.
+
+Pensamos em armazenar as matrizes M^0, M^1, ..., M^(n-1), para poder reusá-las na função
+de gerar a matriz de distâncias, entretanto pensamos que caso o grafo fosse alterado, 
+teríamos que recalculá-las.
