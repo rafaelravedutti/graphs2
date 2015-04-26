@@ -386,7 +386,12 @@ grafo escreve_grafo(FILE *output, grafo g) {
 
         /* Se g é um grafo ponderado, imprime o peso da aresta */
         if(g->grafo_ponderado == 1) {
-          fprintf(output, " [peso=%ld]", valor_matriz);
+          if (valor_matriz == infinito){
+            fprintf(output, " [peso=oo]");
+          }
+          else{
+            fprintf(output, " [peso=%ld]", valor_matriz);
+          }
         }
 
         fprintf(output, "\n");
