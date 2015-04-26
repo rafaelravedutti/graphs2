@@ -298,6 +298,10 @@ grafo le_grafo(FILE *input) {
     } else {
       grafo_lido->grafo_ponderado = 0;
     }
+    
+    /* Define o nome do grafo e se ele é direcionado */
+    grafo_lido->grafo_direcionado = agisdirected(g);
+    grafo_lido->grafo_nome = strdup(agnameof(g));
 
     /* Carrega na estrutura a matriz de adjacência de g */
     if((grafo_lido->grafo_matriz = obter_matriz_adjacencia(g, grafo_lido->grafo_vertices, grafo_lido->grafo_ponderado, grafo_lido->grafo_direcionado, grafo_lido->grafo_n_vertices)) == NULL) {
@@ -305,10 +309,6 @@ grafo le_grafo(FILE *input) {
       destroi_grafo(grafo_lido);
       return NULL;
     }
-
-    /* Define o nome do grafo e se ele é direcionado */
-    grafo_lido->grafo_direcionado = agisdirected(g);
-    grafo_lido->grafo_nome = strdup(agnameof(g));
 
     agclose(g);
   }
