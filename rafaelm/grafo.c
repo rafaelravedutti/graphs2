@@ -255,13 +255,13 @@ long int *gerar_matriz_distancias(grafo g) {
   /* Multiplica a matriz_potencia por M aumentando seu grau, ou seja, se matriz_potencia = M^x, então
      matriz_potencia <- M^(x+1) */
   for(i = 0; i < n_vertices - 1; ++i) {
-    multiplicar_matriz_quadrada(&matriz_potencia, g->grafo_matriz, n_vertices);
-
     for(j = 0; j < n_vertices * n_vertices; ++j) {
       if(matriz_potencia[j] != 0 && matriz_distancias[j] > i + 1) {
         matriz_distancias[j] = i + 1;
       }
     }
+
+    multiplicar_matriz_quadrada(&matriz_potencia, g->grafo_matriz, n_vertices);
   }
 
   /* Libera espaço ocupado pela matriz exponencial */
@@ -386,10 +386,9 @@ grafo escreve_grafo(FILE *output, grafo g) {
 
         /* Se g é um grafo ponderado, imprime o peso da aresta */
         if(g->grafo_ponderado == 1) {
-          if (valor_matriz == infinito){
+          if(valor_matriz == infinito) {
             fprintf(output, " [peso=oo]");
-          }
-          else{
+          } else {
             fprintf(output, " [peso=%ld]", valor_matriz);
           }
         }
@@ -530,7 +529,7 @@ grafo distancias(grafo g) {
   if(grafo_distancias != NULL) {
     /* Inicializa grafo de distâncias */
     grafo_distancias->grafo_direcionado = g->grafo_direcionado;
-    grafo_distancias->grafo_ponderado = g->grafo_ponderado;
+    grafo_distancias->grafo_ponderado = 1;
     grafo_distancias->grafo_nome = strdup(g->grafo_nome);
     grafo_distancias->grafo_n_vertices = n_vertices;
 
